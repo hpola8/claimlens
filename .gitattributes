@@ -1,0 +1,4 @@
+# Generated from ui/app.html by scripts/build-ui.sh
+src/main/resources/static/index.html linguist-generated
+# Single-file demo UI (HTML/CSS/JS). Excluded so language stats reflect the Java backend
+ui/app.html linguist-detectable=false
