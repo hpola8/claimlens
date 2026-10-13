@@ -1,0 +1,65 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: claimlens
+
+  # Default profile runs with an in-memory vector store and no database.
+  # Run with --spring.profiles.active=pgvector to use Postgres + PGVector (see docker-compose.yml).
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration
+
+  ai:
+    openai:
+      api-key: ${OPENAI_API_KEY}
+      chat:
+        options:
+          model: ${CLAIMLENS_CHAT_MODEL:gpt-4o-mini}
+          # Deterministic output: we want the same claim to get the same draft.
+          temperature: 0.0
+      embedding:
+        options:
+          model: text-embedding-3-small
+    vectorstore:
+      # "simple" = SimpleVectorStore bean defined in AiConfig. "pgvector" = PgVectorStore auto-config.
+      type: simple
+
+claimlens:
+  retrieval:
+    top-k: 5
+    # Chunks scoring below this are treated as "not relevant". If nothing clears it,
+    # the assistant abstains instead of guessing.
+    similarity-threshold: 0.30
+  guardrails:
+    # Run Spring AI's RelevancyEvaluator + FactCheckingEvaluator on every draft (2 extra LLM calls).
+    llm-evaluators: true
+    min-model-confidence: 0.75
+    high-value-threshold: 10000
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+---
+spring:
+  config:
+    activate:
+      on-profile: pgvector
+  autoconfigure:
+    exclude: []
+  datasource:
+    url: jdbc:postgresql://localhost:5432/claimlens
+    username: claimlens
+    password: claimlens
+  ai:
+    vectorstore:
+      type: pgvector
+      pgvector:
+        initialize-schema: true
+        index-type: HNSW
+        distance-type: COSINE_DISTANCE
+        dimensions: 1536
